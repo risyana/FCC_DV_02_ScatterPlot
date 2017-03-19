@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Scatter Plot D3js</title>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+	<script type="text/javascript" src="https://d3js.org/d3.v3.min.js"></script>
+	<style type="text/css">
+		@import url('https://fonts.googleapis.com/css?family=Ubuntu');
+		body{
+			text-align: center;
+			background-color: gray;
+			font-family: 'Ubuntu', sans-serif;
+			background:url('https://cdn.pixabay.com/photo/2014/07/05/08/18/bicycle-384566_960_720.jpg');
+			background-size:cover;
+		}
+		svg{
+			margin-top:-30px;
+			padding: 60px;
+			padding-right: 100px;
+			background-color: white;
+			box-shadow:  0px 5px 15px  rgba(0, 0, 0, 0.5); 
+			border:solid 1px black;
+			opacity:0.8;
+			filter:alpha(opacity=80);
+		}
+		.xAxis path,
+		.xAxis line {
+			fill: none;
+			stroke: black;
+			shape-rendering: crispEdges;
+		}
+
+		.xAxis text {
+			font-family: sans-serif;
+			font-size: 11px;
+		}
+
+		rect:hover{
+			fill: rgb(34,55,44);
+
+		}
+
+		div.infodata{
+			visibility: hidden;
+			position: absolute;
+			width: 180px;
+			border: black solid 1px;
+			background-color: white;
+			box-shadow:  0px 5px 5px  rgba(0, 0, 0, 0.5); 
+			padding: 5px;
+			z-index:1;
+		}
+
+		span.infogdp{
+			font-weight : bold;
+		}
+		
+		img.img_flag{
+			height:10px;
+		}
+		
+		circle{
+			transition:r 0.1s;
+		}
+		
+		circle:hover{
+			r:8px;
+		}
+
+
+	</style>
+</head>
+<body>
+	<script type="text/javascript">
+		$("document").ready(function(){
+		
+			var svg_width = 700;
+			var svg_height = 550;
+			var cir_r = 4;
+
+			//Get data
+			var dataUrl = "https://raw.githubusercontent.com/FreeCodeCamp/ProjectReferenceData/master/cyclist-data.json";
+			var arrData = [];
+			$.getJSON(dataUrl,function(result){
+				arrData = result;
+				console.log(arrData);
+				
+				
+				//label and scale x axis
+				var xdomain_min = d3.min(arrData, function(val,idx){
+					var date = new Date(arrData[idx].Seconds);
+					return date;
+				});
+				
+				var xdomain_max = d3.max(arrData, function(val,idx){
+					var date = new Date(arrData[idx].Seconds);
+					return date;
+				});
+				
+				
+				var xScale = d3.time.scale()
+				.domain([xdomain_max-xdomain_min,0])
+				.range([0,svg_width]);
+				
+				var xAxis = d3.svg.axis()
+				.scale(xScale)
+				.orient("bottom")
+				.ticks(8)
+				.tickFormat(function(val) {
+			        var minutes = Math.floor(val / 60);
+			        var seconds = val % 60;
+					if(minutes<10){
+						minutes = "0"+minutes;
+					}
+					if(seconds<10){
+						seconds = "0"+seconds;
+					}
+					return minutes +":"+seconds;
+				});
+				
+				//label and scale Y axis
+				var ydomain_min = d3.min(arrData, function(val,idx){
+					return arrData[idx].Place;
+				});
+				
+				var ydomain_max = d3.max(arrData, function(val,idx){
+					return arrData[idx].Place;
+				});
+				
+				console.log(ydomain_min);
+				console.log(ydomain_max);
+				
+				
+				var yScale = d3.scale.linear()
+				.domain([ydomain_max+1, ydomain_min])
+				.range([svg_height,0]);
+				
+				var yAxis = d3.svg.axis()
+				.scale(yScale)
+				.orient("left")
+				.ticks(10);
+				
+				
+		        // draw SVG
+		        var svg = d3.select("body")
+		        .append("svg")
+		        .attr("width", svg_width+"px")
+		        .attr("height",svg_height+"px");
+				
+				// create text
+				svg.selectAll("text")
+				.data(arrData)
+				.enter()
+				.append("text")
+				.attr("x",function(val,idx){
+					return svg_width + 6 - (
+										( val.Seconds - arrData[0].Seconds)*
+										(svg_width / (xdomain_max-xdomain_min) )
+										) ;
+				})
+				.text(function(val,idx){
+					return val.Name;
+				})
+				.style("font-size","12px")
+				.attr("text-anchor","left")
+				.attr("y",-100)
+				.transition()				//animation
+				.duration(300)				//animation
+				.delay(function(val,idx){	//animation
+					return idx * 100;
+				})
+				.attr("y",function(val,idx){
+					return val.Place+4 + idx * (svg_height/arrData.length - 1 );
+				})
+				;
+				
+				// draw bar inside SVG
+				svg.selectAll("circle")
+				.data(arrData)
+				.enter()
+				.append("circle")
+				.attr("cx",function(val,idx){
+					console.log(svg_width/arrData.length);
+					return svg_width - (
+										( val.Seconds - arrData[0].Seconds)*
+										(svg_width / (xdomain_max-xdomain_min) )
+										) ;
+				})
+				.attr("cy",function(val,idx){
+					return val.Place + idx * (svg_height/arrData.length - 1 );
+				})
+				
+				.attr("r",0)				//animation
+			    .transition()				//animation
+					.duration(300)			//animation
+				.delay(function(val,idx){	//animation
+					return idx * 100;
+				})
+				.attr("r",cir_r)			//animation
+
+				.attr("fill",function(val,idx){
+						if(val.Doping){
+							return "red";
+						}else{
+							return "rgb(34,140,100)";
+						}
+						//return "rgb(34,140,"+Math.floor(+(val[1]/scale)*255/(rect_max/scale))+")";
+					})
+				.attr("id",function(val,idx){
+						return idx;
+					})
+				;
+				
+				// displaying tooltip
+				$("circle").mouseover(function(e){
+					// alert($(this).height()*scale);
+					$(".infodata").css("visibility","visible");
+					// $(".infodata").html(($(this).height()*scale).toFixed(2) +"<br/>"+ $(this).attr("id"));
+
+					$(".info_name").html(arrData[$(this).attr("id")].Name);
+					$(".info_nationality").html(arrData[$(this).attr("id")].Nationality);
+					$(".info_year").html(arrData[$(this).attr("id")].Year);
+					$(".info_time").html(arrData[$(this).attr("id")].Time);
+					$(".info_desc").html(arrData[$(this).attr("id")].Doping);
+
+					$(".infodata").css("left",e.clientX+10+"px");
+					$(".infodata").css("top",e.clientY+10+"px");
+					//$(".infodata").css("left",svg_width/2+10+"px");
+					//$(".infodata").css("top",svg_height/2+10+"px");
+				});
+
+				$("circle").mouseout(function(){
+					$(".infodata").css("visibility","hidden");
+				});
+
+				//add axis to canvas
+				svg.append("g")
+				.attr("class","xAxis")
+				.attr("transform","translate(0,0)")
+				.call(yAxis);
+				
+				svg.append("g")
+				.attr("class","xAxis")
+				.attr("transform","translate(0,"+svg_height+")")
+				.call(xAxis);
+				
+				
+				// add title
+				svg.append("text")
+				.attr("x",svg_width/2)
+				.attr("y",-30)
+				.attr("text-anchor","middle")
+				.style("font-weight","bold")
+				.style("font-size","24px")
+				.text("Doping in Professional Bicycle Racing");
+
+				//add Y axis note
+				svg.append("text")
+				.attr("x",-(svg_height)/2)
+				.attr("y",15)
+				.attr("text-anchor","middle")
+				.style("font-weight","bold")
+				.style("transform","rotate(270deg")
+				.style("font-size","12px")
+				.text("Rank");
+				
+				//add x axis note
+				svg.append("text")
+				.attr("x",svg_width/2)
+				.attr("y",(svg_height)+40)
+				.style("font-weight","bold")
+				.attr("text-anchor","middle")
+				.style("font-size","12px")
+				.text("Minutes Behind Fastest Time");
+				
+				//legend
+				svg.append("text")
+				.attr("x",svg_width-95)
+				.attr("y",(svg_height)-102)
+				.attr("text-anchor","left")
+				.style("font-size","10px")
+				.text("No Dopping");
+				
+				svg.append("circle")
+				.attr("cx",svg_width-100)
+				.attr("cy",svg_height-105)
+				.attr("r",cir_r)
+				.attr("fill","green");
+				
+				//legend
+				svg.append("text")
+				.attr("x",svg_width-95)
+				.attr("y",svg_height-87)
+				.attr("text-anchor","left")
+				.style("font-size","10px")
+				.text("Dopping");
+				
+				svg.append("circle")
+				.attr("cx",svg_width-100)
+				.attr("cy",svg_height-90)
+				.attr("r",cir_r)
+				.attr("fill","red");
+				
+				
+			});	// end getjson (jquery)	
+		});	// end document.ready (jquery)
+	
+
+</script>
+<div class="infodata">
+	<span class="info_name"></span>
+	: <span class="info_nationality"></span>
+	<br/>
+	Year: <span class="info_year"></span>
+	Time: <span class="info_time"></span>
+	<br/>
+	<br/>
+	<span class="info_desc"></span>
+</div>
+
+<div style="position:relative;  top:700px">
+	by : <a style="color:black; " href='https://codepen.io/risyana/'>Eka</a>
+</div>
+<div style="position:relative;  top:710px; font-size:10px;">
+image source : https://pixabay.com/id/sepeda-bersepeda-olahraga-siklus-384566/
+</div>
+</body>
+</html>
